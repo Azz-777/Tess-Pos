@@ -1,0 +1,51 @@
+services:
+  mongo:
+    image: mongo:7
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "--eval",
+          "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}).ok }"
+        ]
+      interval: 5s
+      timeout: 30s
+      retries: 30
+      start_period: 5s
+
+  backend:
+    build: ./backend
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      MONGODB_URI: mongodb://mongo:27017/tesspos?replicaSet=rs0
+      JWT_SECRET: dev-jwt-secret-change-me
+      JWT_EXPIRES_IN: 12h
+      PAYMENT_WEBHOOK_SECRET: dev-webhook-secret-change-me
+      CORS_ORIGIN: http://localhost:5173
+      ENABLE_DEV_ROUTES: "true"
+      SEED_ON_START: "true"
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:4000
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  mongo_data:

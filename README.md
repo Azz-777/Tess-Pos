@@ -1,5 +1,7 @@
 # Tess POS
 
+[![CI](https://github.com/Azz-777/Tess-Pos/actions/workflows/ci.yml/badge.svg)](https://github.com/Azz-777/Tess-Pos/actions/workflows/ci.yml)
+
 A multi-tenant point-of-sale checkout. One backend serves many businesses (tenants).
 A cashier logs in, searches the catalog, builds a cart, places an order, a payment
 provider confirms it, and the cashier sees a receipt. An admin sees a sales report
@@ -22,6 +24,8 @@ businesses; it cannot read a tenant's sales data. Tenant isolation holds everywh
 
 ## Run with Docker
 
+Start Docker Desktop first, then run this command from the project root:
+
 ```
 docker compose up --build
 ```
@@ -30,6 +34,46 @@ docker compose up --build
 - Backend API: http://localhost:4000
 - MongoDB runs as a single-node replica set (required for transactions) and the
   backend waits for it to be healthy. Demo data is seeded automatically on first start.
+- Check that the backend is ready at http://localhost:4000/health before logging in.
+
+On Windows PowerShell, the same commands work from the project directory:
+
+```powershell
+docker compose up --build
+Invoke-RestMethod http://localhost:4000/health
+```
+
+If login says the server cannot be reached, start Docker Desktop and wait until
+`docker compose ps` shows MongoDB and the backend as running/healthy. If the API
+responds but says the email or password is incorrect, confirm that demo seeding
+completed in the backend logs with `docker compose logs backend`. Existing MongoDB
+volumes are preserved and do not have their passwords overwritten by seeding. In
+the local Docker demo, choose **Parolni unutdingizmi?** on the login screen to set
+a new password for one of the listed demo accounts by email. This development-only
+recovery has no email verification and must not be enabled in production.
+
+## Frontend page tests
+
+Run the frontend page interaction tests from the project root:
+
+```powershell
+npm --prefix frontend test
+```
+
+The test suite covers login and role routing, the POS cart and checkout, receipt
+payment and printing, report date filters, product creation/search, staff
+management, and business management. The Docker API integration suite also tests
+authentication, role permissions, catalog, categories, reports, staff and business
+management, product creation, order creation, receipts, and payment against MongoDB:
+
+```powershell
+docker compose up --build -d
+node backend\scripts\integration-test.mjs
+```
+
+GitHub Actions runs the frontend tests and build, the backend type-check, and the
+Docker API integration suite on every push to `main` and pull request targeting `main`.
+The integration suite creates test data, so run it against a disposable database.
 
 ## Demo accounts (password: `password123`)
 
@@ -75,6 +119,7 @@ a QR code (encoding order id, business, total and status) and a print button.
 | GET/POST/PATCH/DELETE | `/api/users`         | admin only        |
 | GET/POST/PATCH | `/api/tenants`              | superadmin only   |
 | POST   | `/api/dev/simulate-payment/:orderId`| dev-only          |
+| POST   | `/api/dev/reset-password`           | dev-only, local use only |
 
 ## Real payment webhook
 
@@ -107,8 +152,20 @@ The first two never contain `costPrice` or `margin`. The third returns 403.
 You need a MongoDB running as a replica set. Then:
 
 ```
-cd backend && cp .env.example .env && npm install && npm run dev
-cd frontend && npm install && npm run dev
+cd backend
+npm install
+npm run dev
+
+cd frontend
+npm install
+npm run dev
 ```
+
+Before starting the backend on Windows, copy `backend\.env.example` to
+`backend\.env` (PowerShell: `Copy-Item backend\.env.example backend\.env`).
+For the local-only password recovery UI, set `ENABLE_DEV_ROUTES=true` in
+`backend\.env` and `VITE_ENABLE_DEV_ROUTES=true` in `frontend\.env.local`.
+Run the backend and frontend in separate terminals. Verify
+http://localhost:4000/health before signing in.
 
 See `DECISIONS.md` for the design rationale behind each stage.

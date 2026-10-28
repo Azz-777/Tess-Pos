@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import Spinner from '../components/Spinner';
 import { useAuth } from '../auth/AuthContext';
 import { getSalesReport } from '../api/reports';
+import { getErrorMessage } from '../api/errorMessage';
 import { SalesReport } from '../types';
 
 export default function ReportPage() {
@@ -14,14 +15,17 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(false);
 
   async function load() {
+    if (from && to && from > to) {
+      setError('Boshlanish sanasi tugash sanasidan keyin bo‘lishi mumkin emas');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
       const data = await getSalesReport(from || undefined, to || undefined);
       setReport(data);
     } catch (err) {
-      const message = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      setError(message ?? 'Hisobotni yuklab bo‘lmadi');
+      setError(getErrorMessage(err, 'Hisobotni yuklab bo‘lmadi'));
     } finally {
       setLoading(false);
     }
@@ -51,11 +55,11 @@ export default function ReportPage() {
         <div className="filters">
           <label>
             Boshlanish
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+            <input type="date" max={to || undefined} value={from} onChange={(e) => setFrom(e.target.value)} />
           </label>
           <label>
             Tugash
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+            <input type="date" min={from || undefined} value={to} onChange={(e) => setTo(e.target.value)} />
           </label>
           <button className="btn-secondary" onClick={load} disabled={loading}>
             Qo‘llash
@@ -100,6 +104,7 @@ export default function ReportPage() {
             </p>
 
             <h3>Eng ko‘p sotilganlar</h3>
+            <div className="data-table-wrap">
             <table className="data-table">
               <thead>
                 <tr>
@@ -125,6 +130,7 @@ export default function ReportPage() {
                 )}
               </tbody>
             </table>
+            </div>
 
             <p className="muted small">{report.cached ? 'Keshdan olindi' : 'Yangidan hisoblandi'}</p>
           </>

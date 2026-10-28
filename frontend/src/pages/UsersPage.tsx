@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import Spinner from '../components/Spinner';
 import { useAuth } from '../auth/AuthContext';
 import { listUsers, createUser, setUserActive, deleteUser } from '../api/users';
+import { getErrorMessage } from '../api/errorMessage';
 import { ManagedUser } from '../types';
 
 const EMPTY_FORM = { name: '', email: '', password: '', role: 'cashier' as 'admin' | 'cashier' };
@@ -17,13 +18,16 @@ export default function UsersPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
+  const [workingUserId, setWorkingUserId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   async function load() {
     setLoading(true);
+    setError('');
     try {
       setUsers(await listUsers());
     } catch (err) {
-      setError(readError(err, 'Xodimlarni yuklab bo‘lmadi'));
+      setError(getErrorMessage(err, 'Xodimlarni yuklab bo‘lmadi'));
     } finally {
       setLoading(false);
     }
@@ -49,7 +53,7 @@ export default function UsersPage() {
       setForm(EMPTY_FORM);
       await load();
     } catch (err) {
-      setError(readError(err, 'Xodim qo‘shilmadi'));
+      setError(getErrorMessage(err, 'Xodim qo‘shilmadi'));
     } finally {
       setSaving(false);
     }
@@ -57,23 +61,35 @@ export default function UsersPage() {
 
   async function toggleActive(target: ManagedUser) {
     setError('');
+    setWorkingUserId(target.id);
     try {
       await setUserActive(target.id, !target.active);
       await load();
     } catch (err) {
-      setError(readError(err, 'Xodimni yangilab bo‘lmadi'));
+      setError(getErrorMessage(err, 'Xodimni yangilab bo‘lmadi'));
+    } finally {
+      setWorkingUserId(null);
     }
   }
 
   async function remove(target: ManagedUser) {
+    if (!window.confirm(`"${target.name}" xodimini o‘chirishni tasdiqlaysizmi?`)) return;
     setError('');
+    setWorkingUserId(target.id);
     try {
       await deleteUser(target.id);
       await load();
     } catch (err) {
-      setError(readError(err, 'Xodimni o‘chirib bo‘lmadi'));
+      setError(getErrorMessage(err, 'Xodimni o‘chirib bo‘lmadi'));
+    } finally {
+      setWorkingUserId(null);
     }
   }
+
+  const query = search.trim().toLocaleLowerCase();
+  const filteredUsers = users.filter((member) =>
+    `${member.name} ${member.email} ${ROLE_LABEL[member.role] ?? member.role}`.toLocaleLowerCase().includes(query)
+  );
 
   return (
     <Layout>
@@ -112,6 +128,8 @@ export default function UsersPage() {
                 type="password"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
+                minLength={6}
+                maxLength={72}
                 required
               />
               <span className="field-hint">Kamida 6 ta belgi.</span>
@@ -142,9 +160,19 @@ export default function UsersPage() {
               Yangilash
             </button>
           </div>
+          <label className="catalog-search">
+            Jamoa ichidan qidirish
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Ism, email yoki rol"
+            />
+          </label>
           {loading ? (
             <Spinner label="Xodimlar yuklanmoqda..." />
           ) : (
+            <div className="data-table-wrap">
             <table className="data-table">
               <thead>
                 <tr>
@@ -156,7 +184,7 @@ export default function UsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((member) => (
+                {filteredUsers.map((member) => (
                   <tr key={member.id}>
                     <td>{member.name}</td>
                     <td>{member.email}</td>
@@ -171,10 +199,10 @@ export default function UsersPage() {
                         <span className="muted small">Siz</span>
                       ) : (
                         <>
-                          <button className="btn-link" onClick={() => toggleActive(member)}>
+                          <button className="btn-link" onClick={() => toggleActive(member)} disabled={workingUserId === member.id}>
                             {member.active ? 'Bloklash' : 'Faollashtirish'}
                           </button>
-                          <button className="btn-link danger" onClick={() => remove(member)}>
+                          <button className="btn-link danger" onClick={() => remove(member)} disabled={workingUserId === member.id}>
                             O‘chirish
                           </button>
                         </>
@@ -184,13 +212,10 @@ export default function UsersPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </section>
       </div>
     </Layout>
   );
-}
-
-function readError(err: unknown, fallback: string): string {
-  return (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? fallback;
 }

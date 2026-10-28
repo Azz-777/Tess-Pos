@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { useNavigate, NavLink } from 'react-router-dom';
+import { useNavigate, NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { roleLabel } from '../auth/roleLabel';
 
@@ -16,7 +16,10 @@ export default function Layout({ children }: { children: ReactNode }) {
     <div className="app">
       <header className="topbar">
         <div className="topbar-left">
-          <span className="brand">Tess POS</span>
+          <Link className="brand" to="/">
+            <span className="brand-mark">T</span>
+            <span>Tess<span className="brand-light">POS</span></span>
+          </Link>
           {tenant ? (
             <span className="tenant-badge">
               {tenant.name}
@@ -28,7 +31,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="topnav">
-          {user?.role === 'cashier' && (
+          {(user?.role === 'cashier' || user?.role === 'admin') && (
             <NavLink to="/pos" className="navlink">
               Yangi sotuv
             </NavLink>
@@ -55,12 +58,16 @@ export default function Layout({ children }: { children: ReactNode }) {
 
         <div className="topbar-right">
           {user && (
-            <span className="user-label">
-              {user.name} · {roleLabel(user.role)}
-            </span>
+            <div className="user-profile">
+              <span className="user-avatar" aria-hidden="true">{user.name.trim().charAt(0).toUpperCase()}</span>
+              <span className="user-label">
+                <strong>{user.name}</strong>
+                <small>{roleLabel(user.role)}</small>
+              </span>
+            </div>
           )}
           {user && (
-            <button className="btn-link" onClick={handleLogout}>
+            <button className="btn-logout" onClick={handleLogout}>
               Chiqish
             </button>
           )}

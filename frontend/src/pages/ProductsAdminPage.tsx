@@ -4,6 +4,7 @@ import Spinner from '../components/Spinner';
 import { useAuth } from '../auth/AuthContext';
 import { listManagedProducts, createProduct } from '../api/products';
 import { listCategories } from '../api/categories';
+import { getErrorMessage } from '../api/errorMessage';
 import { ManagedProduct, Category } from '../types';
 
 const NEW_CATEGORY = '__new__';
@@ -27,15 +28,17 @@ export default function ProductsAdminPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
 
   async function load() {
     setLoading(true);
+    setError('');
     try {
       const [items, cats] = await Promise.all([listManagedProducts(), listCategories()]);
       setProducts(items);
       setCategories(cats);
     } catch (err) {
-      setError(readError(err, 'Mahsulotlarni yuklab bo‘lmadi'));
+      setError(getErrorMessage(err, 'Mahsulotlarni yuklab bo‘lmadi'));
     } finally {
       setLoading(false);
     }
@@ -68,7 +71,7 @@ export default function ProductsAdminPage() {
       setForm(EMPTY_FORM);
       await load();
     } catch (err) {
-      setError(readError(err, 'Mahsulot qo‘shilmadi'));
+      setError(getErrorMessage(err, 'Mahsulot qo‘shilmadi'));
     } finally {
       setSaving(false);
     }
@@ -76,6 +79,10 @@ export default function ProductsAdminPage() {
 
   const previewMargin =
     form.price !== '' && form.costPrice !== '' ? Number(form.price) - Number(form.costPrice) : null;
+  const query = search.trim().toLocaleLowerCase();
+  const filteredProducts = products.filter((product) =>
+    `${product.name} ${product.sku ?? ''} ${product.categoryName ?? ''}`.toLocaleLowerCase().includes(query)
+  );
 
   return (
     <Layout>
@@ -193,9 +200,19 @@ export default function ProductsAdminPage() {
               Yangilash
             </button>
           </div>
+          <label className="catalog-search">
+            Katalogdan qidirish
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Nom, kod yoki turkum"
+            />
+          </label>
           {loading ? (
             <Spinner label="Mahsulotlar yuklanmoqda..." />
           ) : (
+            <div className="data-table-wrap">
             <table className="data-table">
               <thead>
                 <tr>
@@ -208,7 +225,7 @@ export default function ProductsAdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {products.map((product) => (
+                {filteredProducts.map((product) => (
                   <tr key={product._id}>
                     <td>{product.name}</td>
                     <td>{product.categoryName ?? '-'}</td>
@@ -218,22 +235,19 @@ export default function ProductsAdminPage() {
                     <td>{product.stock}</td>
                   </tr>
                 ))}
-                {products.length === 0 && (
+                {filteredProducts.length === 0 && (
                   <tr>
                     <td colSpan={6} className="muted">
-                      Hali mahsulot yo‘q
+                      {products.length === 0 ? 'Hali mahsulot yo‘q' : 'Qidiruv bo‘yicha mahsulot topilmadi'}
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
+            </div>
           )}
         </section>
       </div>
     </Layout>
   );
-}
-
-function readError(err: unknown, fallback: string): string {
-  return (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? fallback;
 }

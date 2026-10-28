@@ -8,3 +8,8 @@ export async function loginRequest(email: string, password: string) {
   );
   return data;
 }
+
+export async function resetPasswordRequest(email: string, password: string) {
+  const { data } = await api.post<{ message: string }>('/api/dev/reset-password', { email, password });
+  return data;
+}

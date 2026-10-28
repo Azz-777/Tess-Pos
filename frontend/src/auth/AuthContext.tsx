@@ -13,12 +13,22 @@ const AuthContext = createContext<AuthState | undefined>(undefined);
 
 function readStored<T>(key: string): T | null {
   const stored = localStorage.getItem(key);
-  return stored ? (JSON.parse(stored) as T) : null;
+  if (!stored) return null;
+  try {
+    return JSON.parse(stored) as T;
+  } catch {
+    localStorage.removeItem(key);
+    return null;
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(() => readStored<AuthUser>('tess_user'));
-  const [tenant, setTenant] = useState<Tenant | null>(() => readStored<Tenant>('tess_tenant'));
+  const [user, setUser] = useState<AuthUser | null>(() =>
+    localStorage.getItem('tess_token') ? readStored<AuthUser>('tess_user') : null
+  );
+  const [tenant, setTenant] = useState<Tenant | null>(() =>
+    localStorage.getItem('tess_token') ? readStored<Tenant>('tess_tenant') : null
+  );
 
   async function login(email: string, password: string) {
     const data = await loginRequest(email, password);
@@ -26,6 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('tess_user', JSON.stringify(data.user));
     if (data.tenant) {
       localStorage.setItem('tess_tenant', JSON.stringify(data.tenant));
+    } else {
+      localStorage.removeItem('tess_tenant');
     }
     setUser(data.user);
     setTenant(data.tenant);

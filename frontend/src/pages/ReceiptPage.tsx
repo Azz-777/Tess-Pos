@@ -5,6 +5,7 @@ import Layout from '../components/Layout';
 import Spinner from '../components/Spinner';
 import { useAuth } from '../auth/AuthContext';
 import { getOrder, simulatePayment } from '../api/orders';
+import { getErrorMessage } from '../api/errorMessage';
 import { Receipt } from '../types';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -29,8 +30,7 @@ export default function ReceiptPage() {
       setReceipt(data);
       setError('');
     } catch (err) {
-      const message = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      setError(message ?? 'Chekni yuklab bo‘lmadi');
+      setError(getErrorMessage(err, 'Chekni yuklab bo‘lmadi'));
     } finally {
       setLoading(false);
     }
@@ -48,8 +48,7 @@ export default function ReceiptPage() {
       await simulatePayment(id);
       await load();
     } catch (err) {
-      const message = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      setError(message ?? 'To‘lov amalga oshmadi');
+      setError(getErrorMessage(err, 'To‘lov amalga oshmadi'));
     } finally {
       setPaying(false);
     }
@@ -131,6 +130,7 @@ export default function ReceiptPage() {
           </div>
         </div>
 
+        <div className="data-table-wrap">
         <table className="data-table receipt-table">
           <thead>
             <tr>
@@ -151,6 +151,7 @@ export default function ReceiptPage() {
             ))}
           </tbody>
         </table>
+        </div>
 
         <div className="cart-total">
           <span>Umumiy jami</span>

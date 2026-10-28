@@ -63,7 +63,7 @@ export async function seedIfEmpty() {
 }
 
 async function runStandalone() {
-  const { connectDatabase } = await import('./config/db');
+  const { connectDatabase } = await import('./config/db.js');
   const mongoose = (await import('mongoose')).default;
   await connectDatabase();
   await seedIfEmpty();

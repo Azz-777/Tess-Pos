@@ -2,6 +2,7 @@ import { useEffect, useState, FormEvent } from 'react';
 import Layout from '../components/Layout';
 import Spinner from '../components/Spinner';
 import { listTenants, createTenant, setTenantActive } from '../api/tenants';
+import { getErrorMessage } from '../api/errorMessage';
 import { TenantSummary } from '../types';
 
 const BUSINESS_TYPES = ['Supermarket', 'Dorixona', 'Kafe', 'Restoran', 'Oziq-ovqat', 'Nonvoyxona', 'Elektronika', 'Chakana savdo'];
@@ -23,13 +24,16 @@ export default function BusinessesPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
+  const [workingTenantId, setWorkingTenantId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   async function load() {
     setLoading(true);
+    setError('');
     try {
       setTenants(await listTenants());
     } catch (err) {
-      setError(readError(err, 'Bizneslarni yuklab bo‘lmadi'));
+      setError(getErrorMessage(err, 'Bizneslarni yuklab bo‘lmadi'));
     } finally {
       setLoading(false);
     }
@@ -61,7 +65,7 @@ export default function BusinessesPage() {
       setForm(EMPTY_FORM);
       await load();
     } catch (err) {
-      setError(readError(err, 'Biznes yaratilmadi'));
+      setError(getErrorMessage(err, 'Biznes yaratilmadi'));
     } finally {
       setSaving(false);
     }
@@ -69,13 +73,21 @@ export default function BusinessesPage() {
 
   async function toggleActive(tenant: TenantSummary) {
     setError('');
+    setWorkingTenantId(tenant.id);
     try {
       await setTenantActive(tenant.id, !tenant.active);
       await load();
     } catch (err) {
-      setError(readError(err, 'Biznesni yangilab bo‘lmadi'));
+      setError(getErrorMessage(err, 'Biznesni yangilab bo‘lmadi'));
+    } finally {
+      setWorkingTenantId(null);
     }
   }
+
+  const query = search.trim().toLocaleLowerCase();
+  const filteredTenants = tenants.filter((tenant) =>
+    `${tenant.name} ${tenant.businessType}`.toLocaleLowerCase().includes(query)
+  );
 
   return (
     <Layout>
@@ -138,6 +150,8 @@ export default function BusinessesPage() {
                 type="password"
                 value={form.adminPassword}
                 onChange={(e) => update('adminPassword', e.target.value)}
+                minLength={6}
+                maxLength={72}
                 required
               />
               <span className="field-hint">Kamida 6 ta belgi.</span>
@@ -160,9 +174,19 @@ export default function BusinessesPage() {
               Yangilash
             </button>
           </div>
+          <label className="catalog-search">
+            Bizneslardan qidirish
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Biznes nomi yoki turi"
+            />
+          </label>
           {loading ? (
             <Spinner label="Bizneslar yuklanmoqda..." />
           ) : (
+            <div className="data-table-wrap">
             <table className="data-table">
               <thead>
                 <tr>
@@ -175,7 +199,7 @@ export default function BusinessesPage() {
                 </tr>
               </thead>
               <tbody>
-                {tenants.map((tenant) => (
+                {filteredTenants.map((tenant) => (
                   <tr key={tenant.id}>
                     <td>{tenant.name}</td>
                     <td>{tenant.businessType}</td>
@@ -187,28 +211,25 @@ export default function BusinessesPage() {
                       </span>
                     </td>
                     <td className="row-actions">
-                      <button className="btn-link" onClick={() => toggleActive(tenant)}>
+                      <button className="btn-link" onClick={() => toggleActive(tenant)} disabled={workingTenantId === tenant.id}>
                         {tenant.active ? 'To‘xtatish' : 'Faollashtirish'}
                       </button>
                     </td>
                   </tr>
                 ))}
-                {tenants.length === 0 && (
+                {filteredTenants.length === 0 && (
                   <tr>
                     <td colSpan={6} className="muted">
-                      Hali biznes yo‘q
+                      {tenants.length === 0 ? 'Hali biznes yo‘q' : 'Qidiruv bo‘yicha biznes topilmadi'}
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
+            </div>
           )}
         </section>
       </div>
     </Layout>
   );
-}
-
-function readError(err: unknown, fallback: string): string {
-  return (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? fallback;
 }

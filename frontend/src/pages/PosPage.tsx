@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import Spinner from '../components/Spinner';
 import { useAuth } from '../auth/AuthContext';
 import { searchProducts } from '../api/products';
 import { placeOrder } from '../api/orders';
+import { getErrorMessage } from '../api/errorMessage';
 import { Product, CartLine } from '../types';
 
 export default function PosPage() {
@@ -12,33 +13,49 @@ export default function PosPage() {
   const { tenant } = useAuth();
   const [search, setSearch] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [cart, setCart] = useState<CartLine[]>([]);
   const [error, setError] = useState('');
   const [placing, setPlacing] = useState(false);
+  const requestId = useRef(0);
 
-  const loadProducts = useCallback(async (term: string) => {
+  const loadProducts = useCallback(async (term: string, requestedPage: number) => {
+    const currentRequest = ++requestId.current;
     setLoading(true);
+    setLoadError('');
     try {
-      const data = await searchProducts(term, 1, 20);
-      setProducts(data.items);
-    } catch {
-      setProducts([]);
+      const data = await searchProducts(term, requestedPage, 20);
+      if (currentRequest === requestId.current) {
+        setProducts(data.items);
+        setTotalPages(data.totalPages);
+      }
+    } catch (err) {
+      if (currentRequest === requestId.current) {
+        setLoadError(getErrorMessage(err, 'Mahsulotlarni yuklab bo‘lmadi'));
+      }
     } finally {
-      setLoading(false);
+      if (currentRequest === requestId.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    const handle = setTimeout(() => loadProducts(search), 300);
+    const handle = setTimeout(() => loadProducts(search, page), 300);
     return () => clearTimeout(handle);
-  }, [search, loadProducts]);
+  }, [search, page, loadProducts]);
 
   function addToCart(product: Product) {
     setError('');
+    const existing = cart.find((line) => line.productId === product._id);
+    if (existing && existing.quantity >= product.stock) {
+      setError(`${product.name} uchun mavjud qoldiqdan ortiq qo‘shib bo‘lmaydi`);
+      return;
+    }
     setCart((prev) => {
-      const existing = prev.find((line) => line.productId === product._id);
-      if (existing) {
+      const current = prev.find((line) => line.productId === product._id);
+      if (current) {
         return prev.map((line) =>
           line.productId === product._id ? { ...line, quantity: line.quantity + 1 } : line
         );
@@ -53,7 +70,9 @@ export default function PosPage() {
   function setQuantity(productId: string, quantity: number) {
     setCart((prev) =>
       prev.map((line) =>
-        line.productId === productId ? { ...line, quantity: Math.max(1, quantity) } : line
+        line.productId === productId
+          ? { ...line, quantity: Math.min(line.stock, Math.max(1, quantity)) }
+          : line
       )
     );
   }
@@ -75,8 +94,7 @@ export default function PosPage() {
       setCart([]);
       navigate(`/receipt/${receipt.id}`);
     } catch (err) {
-      const message = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      setError(message ?? 'Buyurtmani yuborib bo‘lmadi');
+      setError(getErrorMessage(err, 'Buyurtmani yuborib bo‘lmadi'));
     } finally {
       setPlacing(false);
     }
@@ -99,7 +117,7 @@ export default function PosPage() {
         <section className="card">
           <div className="card-head">
             <h2>Mahsulotlar</h2>
-            <button className="btn-ghost" onClick={() => loadProducts(search)} disabled={loading}>
+            <button className="btn-ghost" onClick={() => loadProducts(search, page)} disabled={loading}>
               Yangilash
             </button>
           </div>
@@ -107,11 +125,15 @@ export default function PosPage() {
             className="search"
             placeholder="Mahsulot nomi bo‘yicha qidirish"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
           />
-          {loading ? (
+          {loadError && <div className="error">{loadError}</div>}
+          {loading && !loadError ? (
             <Spinner label="Mahsulotlar yuklanmoqda..." />
-          ) : (
+          ) : !loadError && (
             <ul className="product-list">
               {products.map((product) => {
                 const inCart = cart.find((line) => line.productId === product._id);
@@ -128,10 +150,10 @@ export default function PosPage() {
                       <span className="price">{product.price.toFixed(2)}</span>
                       <button
                         className="btn-secondary"
-                        disabled={product.stock <= 0}
+                        disabled={product.stock <= 0 || (inCart !== undefined && inCart.quantity >= product.stock)}
                         onClick={() => addToCart(product)}
                       >
-                        {product.stock <= 0 ? 'Tugagan' : 'Qo‘shish'}
+                        {product.stock <= 0 ? 'Tugagan' : inCart && inCart.quantity >= product.stock ? 'Qoldiq yetarli emas' : 'Qo‘shish'}
                       </button>
                     </div>
                   </li>
@@ -139,6 +161,25 @@ export default function PosPage() {
               })}
               {products.length === 0 && <li className="muted empty">Mahsulot topilmadi</li>}
             </ul>
+          )}
+          {!loading && !loadError && totalPages > 1 && (
+            <div className="pagination">
+              <button
+                className="btn-ghost"
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                disabled={page === 1}
+              >
+                Oldingi
+              </button>
+              <span className="muted small">{page} / {totalPages}-sahifa</span>
+              <button
+                className="btn-ghost"
+                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                disabled={page === totalPages}
+              >
+                Keyingi
+              </button>
+            </div>
           )}
         </section>
 
@@ -150,6 +191,7 @@ export default function PosPage() {
           {cart.length === 0 ? (
             <p className="muted empty">Savat bo‘sh. Mahsulotlardan qo‘shing.</p>
           ) : (
+            <div className="data-table-wrap">
             <table className="data-table">
               <thead>
                 <tr>
@@ -168,8 +210,13 @@ export default function PosPage() {
                         className="qty-input"
                         type="number"
                         min={1}
+                        max={line.stock}
+                        step={1}
                         value={line.quantity}
-                        onChange={(e) => setQuantity(line.productId, Number(e.target.value))}
+                        onChange={(e) => {
+                          const quantity = Number(e.target.value);
+                          if (Number.isInteger(quantity)) setQuantity(line.productId, quantity);
+                        }}
                       />
                     </td>
                     <td>{(line.price * line.quantity).toFixed(2)}</td>
@@ -182,8 +229,8 @@ export default function PosPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
-
           <div className="cart-total">
             <span>Jami</span>
             <span>{total.toFixed(2)}</span>

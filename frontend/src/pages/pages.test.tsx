@@ -187,6 +187,10 @@ describe('application pages', () => {
     renderPage(<ReceiptPage />, '/receipt/order-123456');
 
     await screen.findByText('to‘lov kutilmoqda');
+    expect(screen.getByRole('heading', { name: 'SOTUV CHEKI' })).toBeInTheDocument();
+    expect(screen.getByText('SOTUV CHEKI').parentElement).toHaveClass('receipt', 'printable');
+    expect(screen.getByText('Cola 0.5L')).toBeInTheDocument();
+    expect(screen.getByText(/12\s?000 × 1 dona/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'To‘lovni tasdiqlash (demo)' }));
     await screen.findByText('to‘langan');
     expect(mocks.simulatePayment).toHaveBeenCalledWith('order-123456');

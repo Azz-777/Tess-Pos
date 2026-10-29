@@ -14,6 +14,8 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: 'bekor qilingan',
 };
 
+const money = new Intl.NumberFormat('uz-UZ', { maximumFractionDigits: 2 });
+
 export default function ReceiptPage() {
   const { id } = useParams<{ id: string }>();
   const { tenant } = useAuth();
@@ -78,7 +80,7 @@ export default function ReceiptPage() {
   }
 
   const orderNumber = receipt.id.slice(-6).toUpperCase();
-  const placedAt = new Date(receipt.createdAt).toLocaleString();
+  const placedAt = new Date(receipt.createdAt).toLocaleString('uz-UZ');
   const statusText = STATUS_LABEL[receipt.status] ?? receipt.status;
   const qrValue = JSON.stringify({
     orderId: receipt.id,
@@ -107,65 +109,67 @@ export default function ReceiptPage() {
         </Link>
       </div>
 
-      <div className="card receipt printable">
+      <article className="receipt printable" aria-label="Sotuv cheki">
         <div className="receipt-brand">
           <div className="receipt-business">{tenant?.name ?? 'Tess POS'}</div>
           {tenant && <div className="muted small">{tenant.businessType}</div>}
         </div>
 
+        <h1 className="receipt-title">SOTUV CHEKI</h1>
+
         <div className="receipt-meta">
           <div>
-            <span className="muted small">Buyurtma</span>
-            <div>#{orderNumber}</div>
+            <span>Chek raqami</span>
+            <strong>#{orderNumber}</strong>
           </div>
           <div>
-            <span className="muted small">Sana</span>
-            <div>{placedAt}</div>
+            <span>Sana</span>
+            <strong>{placedAt}</strong>
           </div>
           <div>
-            <span className="muted small">Holat</span>
-            <div>
-              <span className={`status status-${receipt.status}`}>{statusText}</span>
-            </div>
+            <span>To‘lov holati</span>
+            <strong className={`receipt-status status-${receipt.status}`}>{statusText}</strong>
           </div>
         </div>
 
-        <div className="data-table-wrap">
-        <table className="data-table receipt-table">
+        <table className="receipt-table">
           <thead>
             <tr>
-              <th>Mahsulot</th>
-              <th>Narx</th>
-              <th>Soni</th>
-              <th>Jami</th>
+              <th>Tovar</th>
+              <th className="receipt-amount">Summa</th>
             </tr>
           </thead>
           <tbody>
             {receipt.items.map((item) => (
               <tr key={item.productId}>
-                <td>{item.name}</td>
-                <td>{item.unitPrice.toFixed(2)}</td>
-                <td>{item.quantity}</td>
-                <td>{item.lineTotal.toFixed(2)}</td>
+                <td>
+                  <strong className="receipt-item-name">{item.name}</strong>
+                  <span className="receipt-item-detail">
+                    {money.format(item.unitPrice)} × {item.quantity} dona
+                  </span>
+                </td>
+                <td className="receipt-amount">{money.format(item.lineTotal)}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        </div>
 
         <div className="cart-total">
-          <span>Umumiy jami</span>
-          <span>{receipt.total.toFixed(2)}</span>
+          <strong>JAMI</strong>
+          <strong>{money.format(receipt.total)} so‘m</strong>
         </div>
 
         <div className="receipt-qr">
-          <QRCodeSVG value={qrValue} size={132} level="M" />
-          <div className="muted small">Chekni tekshirish uchun skanerlang</div>
-          <div className="muted small">Buyurtma id: {receipt.id}</div>
+          <QRCodeSVG value={qrValue} size={104} level="M" />
+          <div>Chekni tekshirish uchun skanerlang</div>
+          <small>Buyurtma ID: {receipt.id}</small>
         </div>
 
-        <div className="receipt-footer muted small">Xaridingiz uchun rahmat</div>
-      </div>
+        <footer className="receipt-footer">
+          <strong>Xaridingiz uchun rahmat!</strong>
+          <span>Tess POS</span>
+        </footer>
+      </article>
 
       {error && (
         <div className="card no-print">

@@ -214,19 +214,31 @@ select { appearance: auto; }
 .stat .small { line-height: 1.45; }
 
 .receipt-actions { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-bottom: 16px; }
-.receipt { width: min(100%, 560px); margin: 0 auto; }
-.receipt-brand { margin-bottom: 17px; padding-bottom: 17px; border-bottom: 1px dashed #dce5df; text-align: center; }
-.receipt-business { font: 800 21px 'Segoe UI', sans-serif; letter-spacing: -.04em; }
-.receipt-meta { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 17px; font-size: 12px; }
-.receipt-meta > div > div { margin-top: 4px; font-weight: 700; }
-.receipt-table { margin: 0 0 8px; }
-.status { display: inline-flex; align-items: center; padding: 4px 9px; border-radius: 999px; font-size: 10px; font-weight: 800; text-transform: capitalize; white-space: nowrap; }
-.status-pending_payment { background: #fff5da; color: #94640e; }
-.status-paid { background: #e5f6eb; color: #167b4f; }
-.status-cancelled { background: #fff0ef; color: var(--danger); }
-.receipt-qr { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 17px; padding: 19px 0 6px; border-top: 1px dashed #dce5df; text-align: center; }
-.receipt-qr svg { padding: 8px; border: 1px solid #edf0ee; border-radius: 10px; background: #fff; }
-.receipt-footer { margin-top: 15px; text-align: center; }
+.receipt { width: min(100%, 74mm); margin: 0 auto; padding: 24px 20px; border: 1px solid #e8e4da; background: #fffefa; box-shadow: 0 12px 30px rgba(48, 43, 32, .1); color: #24231f; font: 12px/1.45 'Courier New', monospace; }
+.receipt-brand { margin-bottom: 14px; padding-bottom: 13px; border-bottom: 1px dashed #9b988e; text-align: center; }
+.receipt-business { font: 800 19px/1.25 'Courier New', monospace; letter-spacing: .01em; overflow-wrap: anywhere; }
+.receipt-title { margin: 0 0 15px; font: 700 14px/1.3 'Courier New', monospace; letter-spacing: .12em; text-align: center; }
+.receipt-meta { display: grid; gap: 7px; margin-bottom: 14px; font-size: 11px; }
+.receipt-meta > div { display: flex; justify-content: space-between; gap: 12px; }
+.receipt-meta > div > span { color: #68665f; }
+.receipt-meta strong { text-align: right; overflow-wrap: anywhere; }
+.receipt-status { text-transform: uppercase; }
+.receipt-table { width: 100%; margin: 0; border-collapse: collapse; font: inherit; }
+.receipt-table th { padding: 8px 0; border-top: 1px dashed #9b988e; border-bottom: 1px dashed #9b988e; font-size: 10px; font-weight: 700; text-align: left; text-transform: uppercase; }
+.receipt-table td { padding: 9px 0; border-bottom: 1px dashed #d6d2c8; vertical-align: top; }
+.receipt-table th.receipt-amount, .receipt-table td.receipt-amount { text-align: right; white-space: nowrap; }
+.receipt-item-name, .receipt-item-detail { display: block; overflow-wrap: anywhere; }
+.receipt-item-detail { margin-top: 2px; color: #68665f; font-size: 10px; }
+.receipt .cart-total { margin-top: 0; padding: 13px 0; border-top: 0; border-bottom: 1px dashed #9b988e; font-size: 14px; }
+.receipt .cart-total strong:last-child { text-align: right; }
+.receipt-qr { display: flex; flex-direction: column; align-items: center; gap: 5px; margin-top: 14px; padding-top: 14px; border-top: 1px dashed #9b988e; text-align: center; font-size: 10px; }
+.receipt-qr svg { padding: 5px; background: #fff; }
+.receipt-qr small { max-width: 100%; color: #68665f; font: 9px/1.4 'Courier New', monospace; overflow-wrap: anywhere; }
+.receipt-footer { display: flex; flex-direction: column; gap: 3px; margin-top: 14px; text-align: center; }
+.receipt-footer span { color: #68665f; font-size: 10px; }
+.status-pending_payment { color: #80600e; }
+.status-paid { color: #17613d; }
+.status-cancelled { color: #9c3333; }
 
 @media (max-width: 1080px) {
   .topbar { flex-wrap: wrap; padding-right: 22px; padding-left: 22px; }
@@ -283,8 +295,11 @@ select { appearance: auto; }
 }
 
 @media print {
+  @page { margin: 4mm 3mm; }
   body * { visibility: hidden; }
   .printable, .printable * { visibility: visible; }
-  .printable { position: absolute; top: 0; left: 0; width: 100%; max-width: none; margin: 0; border: 0; box-shadow: none; }
+  .printable { position: absolute; top: 0; left: 0; width: 74mm; max-width: 100%; margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; background: #fff; color: #000; }
   .no-print { display: none !important; }
+  .receipt-item-detail, .receipt-meta > div > span, .receipt-qr small, .receipt-footer span { color: #333; }
+  .receipt, .receipt * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
